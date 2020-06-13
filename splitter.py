@@ -1,11 +1,12 @@
 import os
 import subprocess
 import time
-# os.chdir('/Users/samiatmit/Documents/School_Files/Spring_2020/UROP/VidSplit/')
+# os.chdir('F:\\Work\\VidSplit')
+# print(os.getcwd())
 # preNat = time.perf_counter()
-# subprocess.call(['ffmpeg', '-i', 'P01_S02.mp4', '-ss', '90', '-t', '60', '-c:v', 'copy', 'Video/testNormal.mp4'])
+# subprocess.run(['F:\\Work\\Extras\\ffmpeg\\bin\\ffmpeg.exe', '-i', 'Video\\P01_S02.mp4', '-ss', '90', '-t', '60', '-c:v', 'copy', 'Video\\testNormal.mp4'])
 # postNat = time.perf_counter()
-# subprocess.call(['ffmpeg', '-i', 'P01_S02.mp4', '-ss', '90', '-t', '60', '-c:v', 'libx264', '-qp', '16', 'Video/testEncoded.mp4'])
+# subprocess.call(['F:\\Work\\Extras\\ffmpeg\\bin\\ffmpeg.exe', '-i', 'Video\\P01_S02.mp4', '-ss', '90', '-t', '60', '-c:v', 'nvenc', '-qp', '8', 'Video\\testEncoded.mp4'])
 # postEnc = time.perf_counter()
 # print(postNat - preNat)
 # print(postEnc - postNat)
@@ -36,15 +37,16 @@ def import_data(file_name):
 
 def split_and_save(rootdir, name, start, duration, orig):
     os.chdir(rootdir)
-    subprocess.call(['ffmpeg', '-i', orig, '-ss', start, '-t', duration, '-c:v', 'libx264', '-qp', '16', name])
+    subprocess.run(['F:\\Work\\Extras\\ffmpeg\\bin\\ffmpeg.exe', '-i', orig, '-ss', start, '-t', duration, '-c:v', 'libx264', '-qp', '16', name])
 
-
+## TODO: os.mkdir to make the directories before beggining to split files
+## TODO: Decide how to split all files, how to organize them etc.
 def split_vids(Attention, Behavior, Emotion, rootdir, orig):
     counter = 0
     for tup in Attention['distracted']:
         counter += 1
-        name = '/Users/samiatmit/Documents/School_Files/Spring_2020/UROP/VidSplit/ExampleOut/Attention/distracted/a_D_' + str(counter) + '.mp4'
-        split_and_save(rootdir,orig,tup[0],tup[1],name)
+        name = 'F:\\Work\\VidSplit\\ExampleOut\\Attention\\distracted\\a_D_' + str(counter) + '.mp4'
+        split_and_save(rootdir,name,tup[0],tup[1],orig)
 if __name__ == "__main__":
     A,B,E = import_data('ExtractedP01_S02_Irene.txt')
-    split_vids(A,B,E,'/Users/samiatmit/Documents/School_Files/Spring_2020/UROP/VidSplit/','/Video/P01_S02.mp4')
+    split_vids(A,B,E,'F:\\Work\\VidSplit\\','F:\\Work\\VidSplit\\Video\\P01_S02.mp4')
