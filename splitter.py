@@ -46,21 +46,21 @@ def import_data(file_name):
             line[-1] = line[-1].strip("\n")
             if line[1] == "default":
                 continue
-            else: ## TODO: Continue if else statements
-                if line[4] == 'distarcted':
-                    distarcted.append((file_name,line[1], line[3])) 
-                elif line[4] == 'idle':
-                    idle.append((file_name,line[1],line[3]))
-                elif line[4] == 'Satisfied':
-                    Satisfied.append((file_name,line[1],line[3]))
-                elif line[4] == 'Bored':
-                    Bored.append((file_name,line[1], line[3]))
-                elif line[4] == 'Confused':
-                    Confused.append((file_name,line[1], line[3]))
-                elif line[4] == 'focused':
-                    focused.append((file_name,line[1],line[3]))
+            else:  ## TODO: Continue if else statements
+                if line[4] == "distarcted":
+                    distarcted.append((file_name, line[1], line[3]))
+                elif line[4] == "idle":
+                    idle.append((file_name, line[1], line[3]))
+                elif line[4] == "Satisfied":
+                    Satisfied.append((file_name, line[1], line[3]))
+                elif line[4] == "Bored":
+                    Bored.append((file_name, line[1], line[3]))
+                elif line[4] == "Confused":
+                    Confused.append((file_name, line[1], line[3]))
+                elif line[4] == "focused":
+                    focused.append((file_name, line[1], line[3]))
                 elif line[4] == "on-task":
-                    on_task.append((file_name,line[1], line[3]))
+                    on_task.append((file_name, line[1], line[3]))
                 elif line[4] == "off-tsak":
                     off_tsak.append((file_name, line[1], line[3]))
                 else:
@@ -74,16 +74,16 @@ def import_data(file_name):
 def import_data_multiple(filelist):
     A, B, E = import_data(filelist[0])
     for f in filelist[1:]:
-        x,y,z = import_data(f)
+        x, y, z = import_data(f)
         A = merge_dics(A, x)
-        B = merge_dics(B,y)
+        B = merge_dics(B, y)
         E = merge_dics(E, z)
     return A, B, E
 
 
 def import_paths_from_txt(txt):
     out = []
-    with open(txt,'r') as file:
+    with open(txt, "r") as file:
         for line in file:
             line = line.strip("\n")
             out.append(line)
@@ -114,6 +114,7 @@ def split_and_save(rootdir, name, start, duration, orig):
 ## TODO: Decide how to split all files, how to organize them etc.
 ## TODO: implement duration override
 
+
 def split_vids(Attention, Behavior, Emotion, rootdir):
     counter = 0
     for tup in Attention["distracted"]:
@@ -122,9 +123,11 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             "F:\\Work\\VidSplit\\ExampleOut\\Attention\\distracted\\a_D_"
             + str(counter)
             + ".mp4"
-        ) ## TODO: find a way to change name based on original file
+        )  ## TODO: find a way to change name based on original file
 
-        split_and_save(rootdir, name, tup[1], tup[2], tup[0]) ## tup[0] so that multiple files can be used at once
+        split_and_save(
+            rootdir, name, tup[1], tup[2], tup[0]
+        )  ## tup[0] so that multiple files can be used at once
 
 
 if __name__ == "__main__":
@@ -134,6 +137,6 @@ if __name__ == "__main__":
     # d2 = {"a": [3, 4, 5], "b": [3, 4, 5], "c": [1, 2, 3, 4, 5],'e':[]}
     # d3 = merge_dics(d1,d2)
     # print(d3)
-    paths = import_paths_from_txt('paths.txt')
-    a,b,e = import_data_multiple(paths)
+    paths = import_paths_from_txt("paths.txt")
+    a, b, e = import_data_multiple(paths)
     print(a)
