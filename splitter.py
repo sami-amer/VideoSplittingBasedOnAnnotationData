@@ -48,7 +48,7 @@ def import_data(file_name):
                 continue
             else:  ## TODO: Continue if else statements
                 if line[4] == "distarcted":
-                    distarcted.append((file_name, line[1], line[3]))
+                    distarcted.append((file_name, line[1], line[3])) ## TODO: fix filename, its currently adding txt file name instead of video name
                 elif line[4] == "idle":
                     idle.append((file_name, line[1], line[3]))
                 elif line[4] == "Satisfied":
@@ -65,6 +65,7 @@ def import_data(file_name):
                     off_tsak.append((file_name, line[1], line[3]))
                 else:
                     print("unknown error")
+    
     Attention = {"distracted": distarcted, "idle": idle, "focused": focused}
     Behavior = {"off-task": off_tsak, "on-task": on_task}
     Emotion = {"bored": Bored, "confused": Confused, "satisfied": Satisfied}
@@ -128,7 +129,28 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
         split_and_save(
             rootdir, name, tup[1], tup[2], tup[0]
         )  ## tup[0] so that multiple files can be used at once
+    for tup in Attention["idle"]:
+        counter += 1
+        name = (
+            "F:\\Work\\VidSplit\\ExampleOut\\Attention\\idle\\a_I_"
+            + str(counter)
+            + ".mp4"
+        )  ## TODO: find a way to change name based on original file
 
+        split_and_save(
+            rootdir, name, tup[1], tup[2], tup[0]
+        )  ## tup[0] so that multiple files can be used at once
+    for tup in Behavior["on-task"]:
+        counter += 1
+        name = (
+            "F:\\Work\\VidSplit\\ExampleOut\\Behavior\\on-task\\b_N_"
+            + str(counter)
+            + ".mp4"
+        )  ## TODO: find a way to change name based on original file
+
+        split_and_save(
+            rootdir, name, tup[1], tup[2], tup[0]
+        )  ## tup[0] so that multiple files can be used at once
 
 if __name__ == "__main__":
     # A,B,E = import_data('ExtractedP01_S02_Irene.txt')
@@ -139,4 +161,4 @@ if __name__ == "__main__":
     # print(d3)
     paths = import_paths_from_txt("paths.txt")
     a, b, e = import_data_multiple(paths)
-    print(a)
+    split_vids(a,b,e, 'F:\\Work\\VidSplit\\') 
