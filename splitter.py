@@ -130,9 +130,12 @@ def split_and_save(rootdir, name, start, duration, orig):
 
 ## TODO: os.mkdir to make the directories before beggining to split files
 
-## TODO: implement duration override
 ## TODO: implement function for random choices
 ## TODO: implement as in task instructions
+
+def make_dirs(root):
+    os.chdir(root)
+    os.mkdir() ## TODO: make this make the proper directories for saving
 
 def split_vids(Attention, Behavior, Emotion, rootdir, override = 0):
     counter = 0
