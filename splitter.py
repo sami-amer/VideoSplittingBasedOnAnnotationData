@@ -129,11 +129,12 @@ def split_and_save(rootdir, name, start, duration, orig):
 
 
 ## TODO: os.mkdir to make the directories before beggining to split files
-## TODO: Decide how to split all files, how to organize them etc.
+
 ## TODO: implement duration override
+## TODO: implement function for random choices
+## TODO: implement as in task instructions
 
-
-def split_vids(Attention, Behavior, Emotion, rootdir):
+def split_vids(Attention, Behavior, Emotion, rootdir, override = 0):
     counter = 0
     for tup in Attention["distracted"]:
         counter+=1
@@ -143,9 +144,16 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             + videoName
             + ".mp4"
         )  
-        split_and_save(
-            rootdir, name, tup[1], tup[2], tup[0]
-        )  ## tup[0] so that multiple files can be used at once
+        if override > 0:
+            split_and_save(
+                rootdir, name, tup[1], override, tup[0]
+            )
+        else:
+            split_and_save(
+                rootdir, name, tup[1], tup[2], tup[0]
+            )  ## tup[0] so that multiple files can be used at once
+
+
     for tup in Attention["idle"]:
         counter+=1
         videoName = get_p_s(tup[0], True) + '_' + str(counter)
@@ -154,9 +162,14 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             + videoName
             + ".mp4"
         ) 
-        split_and_save(
-            rootdir, name, tup[1], tup[2], tup[0]
-        )  ## tup[0] so that multiple files can be used at once
+        if override > 0:
+            split_and_save(
+                rootdir, name, tup[1], override, tup[0]
+            )
+        else:            
+            split_and_save(
+                rootdir, name, tup[1], tup[2], tup[0]
+            )  ## tup[0] so that multiple files can be used at once
 
     for tup in Attention["focused"]:
         counter += 1
@@ -166,7 +179,12 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             + videoName
             + ".mp4"
         )
-        split_and_save(rootdir, name, tup[1], tup[2],tup[0])
+        if override > 0:
+            split_and_save(
+                rootdir, name, tup[1], override, tup[0]
+            )
+        else:
+            split_and_save(rootdir, name, tup[1], tup[2],tup[0])
 
     for tup in Behavior["on-task"]:
         counter+=1
@@ -176,9 +194,14 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             + videoName
             + ".mp4"
         )  
-        split_and_save(
-            rootdir, name, tup[1], tup[2], tup[0]
-        )  ## tup[0] so that multiple files can be used at once
+        if override > 0:
+            split_and_save(
+                rootdir, name, tup[1], override, tup[0]
+            )
+        else:
+            split_and_save(
+                rootdir, name, tup[1], tup[2], tup[0]
+            )  ## tup[0] so that multiple files can be used at once
 
     for tup in Behavior['off-task']:
         counter+=1
@@ -188,9 +211,14 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             + videoName
             +".mp4"
         )
-        split_and_save(
-            rootdir, name, tup[1], tup[2], tup[0]
-        )
+        if override > 0:
+            split_and_save(
+                rootdir, name, tup[1], override, tup[0]
+            )
+        else:
+            split_and_save(
+                rootdir, name, tup[1], tup[2], tup[0]
+            )
     
     for tup in Emotion['satisfied']:
         counter += 1
@@ -200,9 +228,14 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             + videoName
             + ".mp4"
         )
-        split_and_save(
-            rootdir,name,tup[1],tup[2],tup[0]
-        )
+        if override > 0:
+            split_and_save(
+                rootdir, name, tup[1], override, tup[0]
+            )
+        else:
+            split_and_save(
+                rootdir,name,tup[1],tup[2],tup[0]
+            )
     for tup in Emotion['confused']:
         counter += 1
         videoName = get_p_s(tup[0], True) + '_' + str(counter)
@@ -211,8 +244,13 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             + videoName
             + ".mp4"
         )
-        split_and_save(
-            rootdir,name,tup[1],tup[2],tup[0])
+        if override > 0:
+            split_and_save(
+                rootdir, name, tup[1], override, tup[0]
+            )
+        else:
+            split_and_save(
+                rootdir,name,tup[1],tup[2],tup[0])
     for tup in Emotion['bored']:
         counter += 1
         videoName = get_p_s(tup[0], True) + '_' + str(counter)
@@ -221,8 +259,13 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             + videoName
             + ".mp4"
         )
-        split_and_save(
-            rootdir,name,tup[1],tup[2],tup[0])
+        if override > 0:
+            split_and_save(
+                rootdir, name, tup[1], override, tup[0]
+            )
+        else:
+            split_and_save(
+                rootdir,name,tup[1],tup[2],tup[0])
 
 def get_durations(a, b, e):
     ## NOTE: Duration is the third element of the tuple
