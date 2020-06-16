@@ -44,9 +44,9 @@ def import_data(file_name):
             line = line.split("\t")
             del line[1]
             line[-1] = line[-1].strip("\n")
-            if line[1] == "default":
+            if line[0] == "default":
                 continue
-            else:  ## TODO: Continue if else statements
+            else:
                 if line[4] == "distarcted":
                     distarcted.append((file_name, line[1], line[3])) ## TODO: fix filename, its currently adding txt file name instead of video name
                 elif line[4] == "idle":
@@ -64,7 +64,7 @@ def import_data(file_name):
                 elif line[4] == "off-tsak":
                     off_tsak.append((file_name, line[1], line[3]))
                 else:
-                    print("unknown error")
+                    print('unknown error with line: ' + str(line))
     
     Attention = {"distracted": distarcted, "idle": idle, "focused": focused}
     Behavior = {"off-task": off_tsak, "on-task": on_task}
@@ -152,6 +152,42 @@ def split_vids(Attention, Behavior, Emotion, rootdir):
             rootdir, name, tup[1], tup[2], tup[0]
         )  ## tup[0] so that multiple files can be used at once
 
+def get_durations(a, b, e):
+    ## NOTE: Duration is the third element of the tuple
+    distarcted, idle, Satisfied, on_task, off_tsak, Bored, Confused, focused = (
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
+    Attention = {"distracted": distarcted, "idle": idle, "focused": focused}
+    Behavior = {"off-task": off_tsak, "on-task": on_task}
+    Emotion = {"bored": Bored, "confused": Confused, "satisfied": Satisfied}
+    ## TODO: cycle through tuple and pull durations into their respective dictionaries.  run functionless to get tallies
+    for tup in a['distracted']:
+        Attention['distracted'].append(tup[2])
+    for tup in a['idle']:
+        Attention['idle'].append(tup[2])
+    for tup in a['focused']:
+        Attention['focused'].append(tup[2])
+    for tup in b['off-task']:
+        Behavior['off-task'].append(tup[2])
+    for tup in b['on-task']:
+        Behavior['on-task'].append(tup[2])
+    for tup in e['bored']:
+        Emotion['bored'].append(tup[2])
+    for tup in e['confused']:
+        Emotion['confused'].append(tup[2])
+    for tup in e['satisfied']:
+        Emotion['satisfied'].append(tup[2])
+
+    return Attention, Behavior, Emotion
+
+
 if __name__ == "__main__":
     # A,B,E = import_data('ExtractedP01_S02_Irene.txt')
     # split_vids(A,B,E,'F:\\Work\\VidSplit\\','F:\\Work\\VidSplit\\Video\\P01_S02.mp4')
@@ -161,4 +197,6 @@ if __name__ == "__main__":
     # print(d3)
     paths = import_paths_from_txt("paths.txt")
     a, b, e = import_data_multiple(paths)
-    split_vids(a,b,e, 'F:\\Work\\VidSplit\\') 
+    # split_vids(a,b,e, 'F:\\Work\\VidSplit\\') 
+    ad,bd,ed = get_durations(a,b,e)
+    
