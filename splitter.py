@@ -196,7 +196,7 @@ def split_and_save(rootdir, orig, start, duration, name):
             "h264_nvenc",  ## if there is no nvidia GPU, replace this with the CPU Powered 'libx264' (compared to a 1660Super, the difference using time.perfcounter is 1 to 16)
             "-qp",
             "16",  ## higher means less quality and lower file size. inverse is true
-            name,
+            name
         ]
     )
 
@@ -215,7 +215,7 @@ def make_dirs(root):
     os.mkdir()  ## TODO: make this make the proper directories for saving
 
 
-def split_vids(Attention, Behavior, Emotion, rootdir, override=0):
+def split_vids(Attention, Behavior, Emotion, rootdir, override = 0):
     """
     **NOTE** as of right now, directories must be made by hand before running this function
     
@@ -458,20 +458,55 @@ def getVideoPath(textPath, locations):
             row = r
             break
     path = (
-        csv[0][row] + "\\" + csv[1][row] + "\\" + csv[2][row] + "\\" + csv[3][row]
+        str(csv[0][row]) + "\\" + str(csv[1][row]) + "\\" + str(csv[2][row]) + "\\" + str(csv[3][row])
     )  ## Slashes need to be adjusted for Mac/Linux
-    print(path)
+    return path ## this is not complete because it requires the program to be in the right directory.  This should be alleviated with the 'rootdir' variable in other functions
 
 
 def split_random(tier, tag, counter, rootdir, directory, duration):
     choice = random.choice(tier[tag])
-    name = tier + "_" + tag + "_" + counter
-    split_and_save(rootdir, directory, choice[1], duration, name)
+    if tag == 'on-task':
+        tag = 'on_task'
+    elif tag == 'off-task':
+        tag = 'off_task'
+    name = tag + "_" + str(counter) + '.mp4'
+    split_and_save(rootdir, directory, str(choice[1]), str(duration), name)
+    return name
 
+def merge_vids(rootdir,pathsFile,output):
+    os.chdir(rootdir)
+    subprocess.run(
+        [
+            "F:\\Work\\Extras\\ffmpeg\\bin\\ffmpeg.exe",
+            "-safe",
+            "0",
+            "-f",
+            "concat",
+            "-i",
+            pathsFile,
+            "-c", ## if you would like to re encode instead, which creates smaller file sizes, change this to "-c:v"
+            "copy", ## and change this to the codec, namely libx264 for CPU and h264_nvenc for Nvidia GPU
+            output
+        ]
+    )
+
+def get_random_clips(tier,tag, rootdir,directory,duration,passes):
+    counter = 0
+    paths = []
+    for r in range(passes):
+        counter += 1
+        path = split_random(tier,tag,counter,rootdir,directory,duration)
+        paths.append(path)
+    with open('toMerge.txt','w+') as f:
+        for path in paths: 
+            f.write("file " + path + '\n')
+    merge_vids(rootdir, 'toMerge.txt', 'output.mp4')
+    for path in paths:
+        os.remove(path)
 
 if __name__ == "__main__":
-    paths = import_paths_from_txt("pathsTotal.txt")
+    paths = import_paths_from_txt("paths.txt")
     path = random.choice(paths)
-    data = import_data(path)
-    print(data)
-    getVideoPath(path, "all_filesFeb27.csv")
+    vPath = getVideoPath(path, "all_filesFeb27.csv")
+    A,B,E = import_data(path, vPath)
+    get_random_clips(B,'on-task',"F:\\Work\\VidSplit\\ExampleOut",vPath,1,60)
