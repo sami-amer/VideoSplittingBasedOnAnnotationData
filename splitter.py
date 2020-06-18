@@ -449,6 +449,16 @@ def sleeperFunc(a, b, e):
 
 
 def getVideoPath(textPath, locations):
+    """
+    gets the video path based on a csv with all paths
+
+    arguments:
+        textPath (str): the path in text form so that identifiers can be pulled from it
+        locations (str): path to the csv in which the first four rows comprise the path
+
+    returns:
+        path (str): a partial path that is complete if in the right directory
+    """
     identifiers = get_p_s(textPath, True)
     p = identifiers[:3]
     s = identifiers[4:]
@@ -462,9 +472,26 @@ def getVideoPath(textPath, locations):
     )  ## Slashes need to be adjusted for Mac/Linux
     return path ## this is not complete because it requires the program to be in the right directory.  This should be alleviated with the 'rootdir' variable in other functions
 
-
 def split_random(tier, tag, counter, rootdir, directory, duration):
-    choice = random.choice(tier[tag])
+    """
+    gets a clip of set duration randomly
+
+    arguments:
+        tier (dict): the dictionary mapping tags to lists of duration tuples
+        tag (str): the tag you want the videos to be associated with
+        counter (int): passed through to avoid naming conflicts
+        rootdir (str): the directory for the terminal to point to
+        directory (str): path to original video file
+        duration (int/float): duration of the clip
+    
+    returns:
+        name (str): the path to the newly split video, so it can be merged later
+
+    """
+    if tier[tag]:
+        choice = random.choice(tier[tag])
+    else:
+        return None
     if tag == 'on-task':
         tag = 'on_task'
     elif tag == 'off-task':
@@ -474,6 +501,17 @@ def split_random(tier, tag, counter, rootdir, directory, duration):
     return name
 
 def merge_vids(rootdir,pathsFile,output):
+    """
+    uses ffmpeg to merge videos based on a text file with paths
+
+    arguments:
+        rootdir (str): the directory where the program must run
+        pathsFile (str): path to the text file that contains VALID FILES.  The one in the repository can be used 'pathsTotal.txt' 
+        output (str): path/name of the output file, must end in .mp4 (or other compatible formats)
+
+    returns:
+        Nothing, but the commands create a video file
+    """
     os.chdir(rootdir)
     subprocess.run(
         [
@@ -490,7 +528,23 @@ def merge_vids(rootdir,pathsFile,output):
         ]
     )
 
-def get_random_clips(tier,tag, rootdir,directory,duration,passes):
+def get_random_clips(tier,tag, rootdir,directory,duration,passes, output):
+    """
+    puts together multiple functions to comprehensivley generate random clips tied to a tag
+
+    arguments:
+        tier (dict): the dictionary mapping tags to lists of duration tuples
+        tag (str): the tag you want the videos to be associated with
+        rootdir (str): the directory for the terminal to point to
+        directory (str): path to original video file
+        duration (int/float): duration of the clip
+        passes (int): the number of times to pull a random clip
+        output (str): name/path of output file
+    
+    returns:
+        Nothing, but the commands create a video file
+    
+    """
     counter = 0
     paths = []
     for r in range(passes):
@@ -500,13 +554,43 @@ def get_random_clips(tier,tag, rootdir,directory,duration,passes):
     with open('toMerge.txt','w+') as f:
         for path in paths: 
             f.write("file " + path + '\n')
-    merge_vids(rootdir, 'toMerge.txt', 'output.mp4')
+    merge_vids(rootdir, 'toMerge.txt', output)
     for path in paths:
         os.remove(path)
 
-if __name__ == "__main__":
-    paths = import_paths_from_txt("paths.txt")
+def clip_generator(pathsFile, locationsFile,tag, rootdir,duration,passes,output):
+    """
+    This is what should be used to achieve the goal set out in Task 1 Goal 1
+    
+    arguments:
+        pathsFile (str): path to the text file that contains VALID FILES.  The one in the repository can be used 'pathsTotal.txt'    
+        locationsFile (str): path to the csv in which the first four rows comprise the path
+        tag (str): the tag you want the videos to be associated with
+        rootdir (str): the directory for the terminal to point to
+        duration (int/float): duration of the clip
+        passes (int): the number of times to pull a random clip
+        output (str): name/path of output file
+
+    returns:
+        Nothing, but the commands create a video file
+    
+    """
+    paths = import_paths_from_txt(pathsFile)
     path = random.choice(paths)
-    vPath = getVideoPath(path, "all_filesFeb27.csv")
-    A,B,E = import_data(path, vPath)
-    get_random_clips(B,'on-task',"F:\\Work\\VidSplit\\ExampleOut",vPath,1,60)
+    vPath = getVideoPath(path,locationsFile)
+    A,B,E = import_data(path,vPath)
+    if tag == 'on-task' or tag == 'off-task':
+        tier = B
+    elif tag =='focused' or tag == 'idle' or tag == 'distracted':
+        tier = A
+    elif tag == 'satisfied' or tag == 'confused' or tag == 'bored':
+        tier = E
+    get_random_clips(tier,tag,rootdir,vPath,duration,passes,output)
+
+if __name__ == "__main__":
+    # paths = import_paths_from_txt("paths.txt")
+    # path = random.choice(paths) # this file can be pulled from the repo, is not dependant on system due to the way the path is cut down
+    # vPath = getVideoPath(path, "all_filesFeb27.csv")
+    # A,B,E = import_data(path, vPath)
+    # get_random_clips(B,'on-task',"F:\\Work\\VidSplit\\ExampleOut",vPath,1,60)
+    clip_generator("paths.txt","all_filesFeb27.csv",'off-task',"F:\\Work\\VidSplit\\ExampleOut",1.5,60,"off_task_clipped.mp4")
