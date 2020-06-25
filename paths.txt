@@ -1,6 +1,6 @@
-F:\Work\DataCounter\inter-rater\Emily\P01\S02\P01_S02_wellness_Emily.txt
-F:\Work\DataCounter\inter-rater\Emily\P01\S03\P01_S03_wellness_Emily.txt
-F:\Work\DataCounter\inter-rater\Emily\P01\S04\P01_S04_wellness_Emily.txt
-F:\Work\DataCounter\inter-rater\Emily\P01\S05\P01_S05_wellness_Emily.txt
-F:\Work\DataCounter\inter-rater\Emily\P01\S06\P01_S06_Emily.txt
-F:\Work\DataCounter\inter-rater\Emily\P01\S07\P01_S07_Emily.txt
+D:\Work\DataCounter\inter-rater\Emily\P01\S02\P01_S02_wellness_Emily.txt
+D:\Work\DataCounter\inter-rater\Emily\P01\S03\P01_S03_wellness_Emily.txt
+D:\Work\DataCounter\inter-rater\Emily\P01\S04\P01_S04_wellness_Emily.txt
+D:\Work\DataCounter\inter-rater\Emily\P01\S05\P01_S05_wellness_Emily.txt
+D:\Work\DataCounter\inter-rater\Emily\P01\S06\P01_S06_Emily.txt
+D:\Work\DataCounter\inter-rater\Emily\P01\S07\P01_S07_Emily.txt
