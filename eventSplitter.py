@@ -4,38 +4,28 @@ import time
 import os
 import subprocess
 
-MAIN_VID_PATH = 'Video\\'
-MAIN_ANN_PATH = '/Users/sharifa/wellness/annotation/'
-MAIN_OUT_VID_PATH = 'ExampleOut\\'
-FOLDER_CHAR = '\\' #'\\' for windows
-FFMPEG_COMMAND = 'ffmpeg' # "F:\\Work\\Extras\\ffmpeg\\bin\\ffmpeg.exe" for windows
+MAIN_VID_PATH = 'Video/'
+MAIN_ANN_PATH = '/home/sami/Work/resources/inter-rater/'
+MAIN_OUT_VID_PATH = 'ExampleOut/'
+FOLDER_CHAR = '/'
+FFMPEG_COMMAND = 'ffmpeg'
 ALL_FILES_CSV = 'all_filesFeb27.csv'
+CODEC = "h264_nvenc" ## if there is no nvidia GPU, replace this with the CPU Powered 'libx264'
 
-def get_end_time(file_input):
-    with open(file_input, "r") as f:
-        bTime = 0.0
-        eTime = 0.0
-        aTime = 0.0
-        for line in f:
-            line = line.split("\t")
-            del line[1]
-            line[-1] = line[-1].strip("\n")
-            line[1] = float(line[1])
-            line[2] = float(line[2])
-            line[3] = float(line[3])
-            if line[0] == "default":
-                continue
-            if (line[0] == "Behavioral_Engagement") and line[2] > bTime:
-                bTime = line[2]
-            elif line[0] == "Attention_Engagement" and line[2] > aTime:
-                aTime = line[2]
-            elif line[0] == "Emotional_Engagement" and line[2] > eTime:
-                eTime = line[2]
-    return bTime, aTime, eTime
+def get_end_time(file_input): ## TODO: make cleaner, comment **DONE**
+    '''
+    gets the max time of a video file, so tha the import_duration_ms can creat template columns to be filled
 
-def split_and_save(rootdir, orig, start, duration, name):
+    arguments:
+        file_input(str): path to the file input, usually an annotation .txt
+    '''
+    data = pd.read_csv(file_input,'\t',header=None, usecols=[0,5, 2,3]).set_index([0,5])
+    end_time = data[3].describe().max()
+    return end_time
+
+def split_and_save(rootdir, orig, start, duration, name): ## TODO: make cleaner **DONE**
     """
-    runs command line commands to navigate to the given directory and use FFMPEG to clip a video
+    runs command line commands to FFMPEG to clip a video
 
     arguments:
         rootdir (str): the directory to navigate to, usually whatever allows us to access the video in the 'orig' variable
@@ -47,7 +37,6 @@ def split_and_save(rootdir, orig, start, duration, name):
     returns:
         nothing, but the command it runs will create a new video wherever 'name' is, depending on where the function navigated with using 'rootdir'
     """
-    # os.chdir(rootdir)
     subprocess.run(
         [
             FFMPEG_COMMAND,  ## make this point to where ffmpeg is, or if FFMPEG is in PATH then just replace this with FFMPEG
@@ -58,14 +47,14 @@ def split_and_save(rootdir, orig, start, duration, name):
             "-t",
             duration,
             "-c:v",  ## signifies that we are rencoding video
-            "h264_nvenc",  ## if there is no nvidia GPU, replace this with the CPU Powered 'libx264' (compared to a 1660Super, the difference using time.perfcounter is 1 to 16)
+            CODEC,
             "-qp",
             "16",  ## higher means less quality and lower file size. inverse is true
             rootdir+name
         ]
     )
 
-def import_data_durations(file_name, videopath=None):
+def import_data_durations(file_name): ## TODO: make cleaner, fix doc strings **DONE**
     """
     This is the main function to import duration data.  
     
@@ -73,10 +62,9 @@ def import_data_durations(file_name, videopath=None):
 
     arguments:
         file_name (str): path to the text file
-        videopath (str): defaults to None, in which the function get_p_s is used. Otherwise uses the passed in videopath
 
     returns:
-        Attention, Behavior, Emotion (dict): Dictionaries where keys correspond to tags and values to lists of tuples that contain duration data
+        annotation_data (df): a data frame indexed by type of engagment, which contains start and duration stats
     """
     annotation_data = pd.read_csv(file_name,'\t',header=None, usecols=[0,5, 2,4]).set_index([0,5])
     try:
@@ -84,23 +72,9 @@ def import_data_durations(file_name, videopath=None):
     except:
         pass
     
-    # #label Level
-    # annotation_label = annotation_data.index.unique(1).to_list()
-    # # print(annotation_label)
-    # annotation_label = ['off-tsak', 'on-task', 'distarcted', 'focused', 'idle', 'Bored', 'Satisfied', 'Confused']
-    # annotation_Dict = {elem: pd.DataFrame for elem in annotation_label}
-    # for label in range(len(annotation_label)):
-    #     label_name = annotation_label[label]
-    #     this_label_data = [[]]
-    #     try:
-    #         this_label_data = annotation_data.xs(label_name,level=1).to_numpy()
-    #     except:
-    #         pass
-    #     annotation_Dict[label_name] = this_label_data
-
     return annotation_data
 
-def import_paths_from_txt(txt):
+def import_paths_from_txt(txt): ## TODO: make cleaner, fix doc strings **DONE**
     """
     borrowed from data counter, imports lines as elements of a list.
 
@@ -116,55 +90,34 @@ def import_paths_from_txt(txt):
     out = pd.read_csv(txt,header=None).values.flatten().tolist()
     return out
 
-def clean_cuts(df, window):
-    previndex = 0
-    data = {"sequence":[],"on-task": [],"off-task":[],"satisfied":[],"confused":[],"bored": [], "focused": [],"idle":[],"distracted":[]}
-    seq = 0
-    for i in range(len(df) + 1):
-        if i == 0:
-            continue
-        if i % window == 0:
-            seq += 1
-            percentages = get_percentages(df, window, previndex, i)
-            previndex = i
-            data["sequence"].append(seq)
-            data['on-task'].append(percentages['on-task'])
-            data['off-task'].append(percentages['off-task'])
-            data['satisfied'].append(percentages['satisfied'])
-            data['confused'].append(percentages['confused'])
-            data['bored'].append(percentages['bored'])
-            data['focused'].append(percentages['focused'])
-            data['distracted'].append(percentages['distracted'])
-            data['idle'].append(percentages['idle'])
-    df = pd.DataFrame(data)
-    return df
+def clean_cuts(ms_data, window,kind): ## NOTE: brand new, merging of two functions
+    '''
+    merge of clean_cuts_percentages and clean_cuts_status.  Output is changed between the two using the 'kind' string
 
-def clean_cuts_status(df, window):
+    arguments:
+        ms_data (df): data from import_data_ms
+        window (int): size of the calculation window, in milliseconds
+        kind (str): '%' if you want percentages, 'bool' if you want status (True/False)
+    '''
     previndex = 0
-    data = {"sequence":[],"on-task": [],"off-task":[],"satisfied":[],"confused":[],"bored": [], "focused": [],"idle":[],"distracted":[]}
-    seq = 0
-    for i in range(len(df) + 1):
+    output = pd.DataFrame(columns = ['sequence','on-task', 'off-task', 'satisfied', 'confused', 'bored', 'focused','idle','distracted']).set_index('sequence')
+    seq = 0 
+    for i in range(len(ms_data) + 1):
         if i == 0:
             continue
         if i % window == 0:
             seq += 1
-            statuses = get_status(df, window, previndex, i)
+            if kind == '%':
+                data = get_percentages(ms_data,window, previndex,i)
+            elif kind == 'bool':
+                data = get_status(ms_data, window, previndex, i) 
             previndex = i
-            data["sequence"].append(seq)
-            data['on-task'].append(statuses['on-task'])
-            data['off-task'].append(statuses['off-task'])
-            data['satisfied'].append(statuses['satisfied'])
-            data['confused'].append(statuses['confused'])
-            data['bored'].append(statuses['bored'])
-            data['focused'].append(statuses['focused'])
-            data['distracted'].append(statuses['distracted'])
-            data['idle'].append(statuses['idle'])
-    df = pd.DataFrame(data)
-    return df
+            output.loc[seq] = data.loc[0].tolist()
+    return output
+
 
 def import_data_ms(file_name): # TODO: make this use data frames
-    bTime, aTime, eTime = get_end_time(file_name)
-    endtime = max([bTime, aTime, eTime])
+    endtime = get_end_time(file_name)
     Behavioral_Engagement = [0] * int(endtime * 1000)
     Attention_Engagement = [0] * int(endtime * 1000)
     Emotional_Engagement = [0] * int(endtime * 1000)
@@ -200,120 +153,72 @@ def import_data_ms(file_name): # TODO: make this use data frames
 
     return ms_data
 
-def get_percentages(df, window,previndex,i):
-    
+def get_percentages(df, window,previndex,i): ## TODO: make cleaner and comment **DONE**
+    '''
+    used in clean_cuts to get percentages per window.
+
+    arguments:
+        all arguments are inherited from clean_cuts
+    '''
     behaviorCounts = df[previndex:i]['behavior'].value_counts()
-    # print(behaviorCounts)
     attentionCounts = df[previndex:i]['attention'].value_counts()
     emotionCounts = df[previndex:i]['emotion'].value_counts()
-    try:
-        percentOnTask = behaviorCounts[2] / window
-    except:
-        percentOnTask = 0
-    try:
-        percentOffTask = behaviorCounts[1] / window
-    except:
-        percentOffTask = 0
-    try:
-        percentSatisfied = emotionCounts[3]/ window
-    except:
-        percentSatisfied = 0
-    try:
-        percentConfused = emotionCounts[2]/ window
-    except:
-        percentConfused = 0
-    try:
-        percentBored = emotionCounts[1]/ window
-    except:
-        percentBored = 0
-    try:
-        percentFocused = attentionCounts[3]/ window
-    except:
-        percentFocused = 0
-    try:
-        percentIdle = attentionCounts[2]/ window
-    except:
-        percentIdle = 0
-    try:
-        percentDistracted = attentionCounts[1]/ window
-    except:
-        percentDistracted = 0
-    percentDict = {'on-task':percentOnTask,'off-task':percentOffTask,'satisfied':percentSatisfied,'confused': percentConfused,
-    'bored':percentBored,'focused':percentFocused,'idle':percentIdle,'distracted': percentDistracted}
-    return percentDict
+    percentageDF = pd.DataFrame(columns=['on-task','off-task','satisfied','confused','bored','focused','idle','distracted'])
+    percentageDF.loc[0] = [0,0,0,0,0,0,0,0]
+    for item in behaviorCounts.iteritems():
+        if item[0] == 1:
+            percentageDF.loc[0]['off-task'] = item[1]/ window
+        elif item[0] == 2:
+            percentageDF.loc[0]['on-task'] = item[1]/ window 
+    for item in attentionCounts.iteritems():
+        if item[0] == 1:
+            percentageDF.loc[0]['distracted'] = item[1]/ window
+        elif item[0] == 2:
+            percentageDF.loc[0]['idle'] = item[1]/ window
+        elif item[0] == 3:
+            percentageDF.loc[0]['focused'] = item[1]/ window          
+    for item in emotionCounts.iteritems():
+        if item[0] == 1:
+            percentageDF.loc[0]['bored'] = item[1]/ window
+        elif item[0] == 2:
+            percentageDF.loc[0]['confused'] = item[1]/ window
+        elif item[0] == 3:
+            percentageDF.loc[0]['satisfied'] = item[1]/ window  
+    
+    return percentageDF
 
 def get_status(df, window,previndex,i):
-    
+    '''
+    used in clean_cuts to get percentages per window.
+
+    arguments:
+        all arguments are inherited from clean_cuts
+    '''
     behaviorCounts = df[previndex:i]['behavior'].value_counts()
-    # print(behaviorCounts)
     attentionCounts = df[previndex:i]['attention'].value_counts()
     emotionCounts = df[previndex:i]['emotion'].value_counts()
-    try:
-        if behaviorCounts[2] > 0:
-            statusOnTask = True
-        else:
-            statusOnTask = False
-    except:
-        statusOnTask = False
-    
-    try:
-        if behaviorCounts[1] > 0:
-            statusOffTask = True
-        else:
-            statusOffTask = False
-    except:
-        statusOffTask = False
-    
-    try:
-        if emotionCounts[3] > 0:
-            statusSatisfied = True
-        else:
-            statusSatisfied = False
-    except:
-        statusSatisfied = False
-    
-    try:
-        if emotionCounts[2] > 0:
-            statusConfused = True
-        else:
-            statusConfused = False
-    except:
-        statusConfused = False
-    
-    try:
-        if emotionCounts[1] > 0:
-            statusBored = True
-        else:
-            statusBored = False
-    except:
-        statusBored = False
-    
-    try:
-        if attentionCounts[3] > 0:
-            statusFocused = True
-        else:
-            statusFocused = False
-    except:
-        statusFocused = False
-    
-    try:
-        if attentionCounts[2] > 0:
-            statusIdle = True
-        else:
-            statusIdle = False
-    except:
-        statusIdle = False
-    
-    try:
-        if attentionCounts[1] > 0:
-            statusDistracted = True
-        else:
-            statusDistracted = False
-    except:
-        statusDistracted = False
-    statusDict = {'on-task':statusOnTask,'off-task':statusOffTask,'satisfied':statusSatisfied,'confused': statusConfused,
-    'bored':statusBored,'focused':statusFocused,'idle':statusIdle,'distracted': statusDistracted}
-    return statusDict
+    statusDF = pd.DataFrame(columns=['on-task','off-task','satisfied','confused','bored','focused','idle','distracted'])
+    statusDF.loc[0] = [False,False,False,False,False,False,False,False]
+    for item in behaviorCounts.iteritems():
+        if item[0] == 1:
+            statusDF.loc[0]['off-task'] = True
+        elif item[0] == 2:
+            statusDF.loc[0]['on-task'] = True 
+    for item in attentionCounts.iteritems():
+        if item[0] == 1:
+            statusDF.loc[0]['distracted'] = True
+        elif item[0] == 2:
+            statusDF.loc[0]['idle'] = True
+        elif item[0] == 3:
+            statusDF.loc[0]['focused'] = True          
+    for item in emotionCounts.iteritems():
+        if item[0] == 1:
+            statusDF.loc[0]['bored'] = True
+        elif item[0] == 2:
+            statusDF.loc[0]['confused'] = True
+        elif item[0] == 3:
+            statusDF.loc[0]['satisfied'] = True 
+    return statusDF
 
 def getVideoPath(textPath, locations, extras = False):
     file_name_splits = os.path.basename(textPath).split('.')[0].split('_')
@@ -501,19 +406,20 @@ if __name__ == "__main__":
     paths = import_paths_from_txt("paths.txt")
     passes = 100
     random_paths = random.choices(paths, k=passes)
-    # data = import_data_ms(path) # this data is a dictionary where keys are tags and values are arrays
+    data = import_data_ms(MAIN_ANN_PATH + paths[1]) # this data is a dictionary where keys are tags and values are arrays
     # onTask = data.xs('on-task',level = 1)
     # for elem in data.xs('on-task',level = 1).iterrows():
     #     print(len(elem)) # [1][2] is start, [1][4] is duration
-    # cuts = (clean_cuts_status(data,1000))
-    # print(cuts)
+    cuts = (clean_cuts(data,1000,'bool'))
+    print(cuts)
     # for i,row in cuts.iterrows():
     #     print(row['on-task'])
     # print(data)
-    # event_splitter(path,data,3)
+    # path= paths[1]
+    # event_splitter(MAIN_ANN_PATH + path,data,3)
     # for path in random_paths:
     #     data = import_data_ms(path)
     #     cuts = clean_cuts_status(data,1000)
     #     print(association_durations(cuts))
 
-    associaton_non_event_splitter(paths[1],3)
+    # associaton_non_event_splitter(paths[1],3)
