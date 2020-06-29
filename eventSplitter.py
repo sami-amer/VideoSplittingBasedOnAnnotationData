@@ -124,7 +124,7 @@ def clean_cuts(ms_data, window, kind):  ## NOTE: brand new, merging of two funct
         ]
     ).set_index("sequence")
     seq = 0
-    for i in range(len(ms_data) + 1):
+    for i in range(len(ms_data) + 2):
         if i == 0:
             continue
         if i % window == 0:
@@ -186,7 +186,7 @@ def import_data_ms(file_name):  ## **DONE**
             continue
         for elem in times:
             start = int(1000 * (elem[1][2]))
-            stop = int(1000 * (start + elem[1][4]) + 1)
+            stop = int(1000 * (elem[1][2] + elem[1][4]))
             label = tagsMapped[tag][1]
             val = tagsMapped[tag][0]
             ms_data.loc[start:stop, label] = val
@@ -264,23 +264,24 @@ def get_status(df, window, previndex, i): ## **DONE**
     )
     statusDF.loc[0] = [False, False, False, False, False, False, False, False]
     for item in behaviorCounts.iteritems():
-        if item[0] == 1:
+        # print(item[1])
+        if item[0] == 1 and item[1] > 499:
             statusDF.loc[0]["off-task"] = True
-        elif item[0] == 2:
+        elif item[0] == 2 and item[1] > 499:
             statusDF.loc[0]["on-task"] = True
     for item in attentionCounts.iteritems():
-        if item[0] == 1:
+        if item[0] == 1 and item[1] > 499:
             statusDF.loc[0]["distracted"] = True
-        elif item[0] == 2:
+        elif item[0] == 2 and item[1] > 499:
             statusDF.loc[0]["idle"] = True
-        elif item[0] == 3:
+        elif item[0] == 3 and item[1] > 499:
             statusDF.loc[0]["focused"] = True
     for item in emotionCounts.iteritems():
-        if item[0] == 1:
+        if item[0] == 1 and item[1] > 499:
             statusDF.loc[0]["bored"] = True
-        elif item[0] == 2:
+        elif item[0] == 2 and item[1] > 499:
             statusDF.loc[0]["confused"] = True
-        elif item[0] == 3:
+        elif item[0] == 3 and item[1] > 499:
             statusDF.loc[0]["satisfied"] = True
     return statusDF
 
@@ -407,7 +408,7 @@ def non_event_splitter(start, duration, window, p, s, tag, vPath, char): ## **DO
         start = start + window
 
 
-def association_durations(segments):
+def association_durations(segments, window):
     # KEY:
     #   NSF :: On task, Satisfied, Focused
     #   FSF :: Off task, Satisfied, Focused
@@ -416,6 +417,9 @@ def association_durations(segments):
     associationTimes = {"NSF": [], "FSF": [], "FBI": [], "FBD": []}
     # vPath,p, s = getVideoPath(path, ALL_FILES_CSV, True)
     continue1, continue2, continue3, continue4 = False, False, False, False
+    added= set()
+    finalIndex = segments.shape[0]
+    # print(segments.shape)
     for index, row in segments.iterrows():
         onTask = row["on-task"]
         offTask = row["off-task"]
@@ -426,30 +430,38 @@ def association_durations(segments):
         distracted = row["distracted"]
         if continue1:
             if [onTask, satisfied, focused] == [True, True, True]:
+                if index == finalIndex:
+                    associationTimes["NSF"].append((startSecond, index - 1))
                 continue
             else:
-                associationTimes["NSF"].append((startSecond, index))
+                associationTimes["NSF"].append((startSecond, index - 1))
                 continue1 = False
 
         if continue2:
             if [offTask, satisfied, focused] == [True, True, True]:
+                if index == finalIndex:
+                    associationTimes["FSF"].append((startSecond, index - 1))
                 continue
             else:
-                associationTimes["FSF"].append((startSecond, index))
+                associationTimes["FSF"].append((startSecond, index-1))
                 continue2 = False
 
         if continue3:
             if [offTask, bored, idle] == [True, True, True]:
+                if index == finalIndex:
+                    associationTimes["FBI"].append((startSecond, index - 1))
                 continue
             else:
-                associationTimes["FBI"].append((startSecond, index))
+                associationTimes["FBI"].append((startSecond, index-1))
                 continue3 = False
 
         if continue4:
             if [offTask, bored, distracted] == [True, True, True]:
+                if index == finalIndex:
+                    associationTimes["FBD"].append((startSecond, index - 1))
                 continue
             else:
-                associationTimes["FBD"].append((startSecond, index))
+                associationTimes["FBD"].append((startSecond, index-1))
                 continue4 = False
 
         if [onTask, satisfied, focused] == [True, True, True]:
@@ -471,6 +483,8 @@ def association_durations(segments):
             startSecond = index
             continue4 = True
             continue
+        
+
     return associationTimes
 
 
@@ -479,7 +493,7 @@ def associaton_non_event_splitter(path, window):
     data = import_data_ms(path)
     maxLen = len(data) / 1000
     segments = clean_cuts(data, 1000,'bool')
-    durations = association_durations(segments)
+    durations = association_durations(segments, window)
     for duration in durations["NSF"]:
         if duration[0] > (maxLen - window):
             continue
@@ -543,25 +557,34 @@ def associaton_non_event_splitter(path, window):
 
 if __name__ == "__main__":
     paths = import_paths_from_txt("paths.txt")
-    passes = 100
-    random_paths = random.choices(paths, k=passes)
-    data = import_data_ms(
-        MAIN_ANN_PATH + paths[1]
-    )  # this data is a dictionary where keys are tags and values are arrays
+    # passes = 100
+    # random_paths = random.choices(paths, k=passes)
+    # data = import_data_ms(MAIN_ANN_PATH + paths[1])  
     # print(data)
+    
     # onTask = data.xs('on-task',level = 1)
     # for elem in data.xs('on-task',level = 1).iterrows():
     #     print(len(elem)) # [1][2] is start, [1][4] is duration
-    cuts = (clean_cuts(data,3000,'bool'))
-    print(cuts)
+    # cuts = (clean_cuts(data,3000,'bool'))
+    # print(cuts)
     # for i,row in cuts.iterrows():
     #     print(row['on-task'])
     # print(data)
     # path= paths[1]
     # event_splitter(MAIN_ANN_PATH + path,data,3)
     # for path in random_paths:
-    #     data = import_data_ms(path)
-    #     cuts = clean_cuts_status(data,1000)
+    #     data = import_data_ms(MAIN_ANN_PATH + path)
+    #     cuts = clean_cuts(data,1000,'bool')
     #     print(association_durations(cuts))
+    path = MAIN_ANN_PATH + paths[0]
+    data = import_data_ms(path)
+    cuts = clean_cuts(data,1000,'bool')
+    # with pd.option_context('display.max_rows', None,'display.max_columns',None):
+    #     print(cuts)
+    #     print(import_data_ms(path).loc[33079:33082])
+        
+        
 
-    # associaton_non_event_splitter(paths[1],3)
+    print(path)
+    print(association_durations(cuts,3))
+    # associaton_non_event_splitter(path,3)
