@@ -5,3 +5,4 @@ Video
 testlab.py
 *.csv
 toMerge.txt
+__pycache__

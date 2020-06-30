@@ -396,124 +396,84 @@ def non_event_splitter(start, duration, window, p, s, tag, vPath, char): ## **DO
         start = start + window
 
 
-def association_durations(segments):
-    # KEY:
-    #   NSF :: On task, Satisfied, Focused
-    #   FSF :: Off task, Satisfied, Focused
-    #   FBI :: Off Task, Bored, Idle
-    #   FBD :: Off Task, Bored, Distracted
-    associationTimes = {"NSF": [], "FSF": [], "FBI": [], "FBD": []}
-    # vPath,p, s = getVideoPath(path, ALL_FILES_CSV, True)
-    continue1, continue2, continue3, continue4 = False, False, False, False
-    finalIndex = segments.shape[0]
-    # print(segments.shape)
-    for index, row in segments.iterrows():
-        onTask = row["on-task"]
-        offTask = row["off-tsak"]
-        satisfied = row["Satisfied"]
-        focused = row["focused"]
-        bored = row["Bored"]
-        idle = row["idle"]
-        distracted = row["distarcted"]
-        # print(row.name)
-        if continue1:
-            if [onTask, satisfied, focused] == [True, True, True]:
-                if index == finalIndex:
-                    associationTimes["NSF"].append((startSecond[0], row.name[1]))
-                continue
+def association_splitter(path, window):
+    data = import_data_durations(path)[0]
+    vPath, p, s = getVideoPath(path,ALL_FILES_CSV, True)
+    splits = get_raw_split_annotations(data,window)
+    prev = ""
+    number = 1
+    for index, row in splits.iterrows():
+        start = index[0]
+        duration = index[1] - start
+        # print(start,duration)
+        if [row["on-task"], row["Satisfied"], row["focused"]] == [True, True, True]:
+            if prev == 'NSF':
+                number += 1
             else:
-                associationTimes["NSF"].append((startSecond[0], row.name[1]))
-                continue1 = False
-
-        if continue2:
-            if [offTask, satisfied, focused] == [True, True, True]:
-                if index == finalIndex:
-                    associationTimes["FSF"].append((startSecond[0], row.name[1]))
-                continue
-            else:
-                associationTimes["FSF"].append((startSecond[0], row.name[1]))
-                continue2 = False
-
-        if continue3:
-            if [offTask, bored, idle] == [True, True, True]:
-                if index == finalIndex:
-                    associationTimes["FBI"].append((startSecond[0], row.name[1]))
-                continue
-            else:
-                associationTimes["FBI"].append((startSecond[0], row.name[1]))
-                continue3 = False
-
-        if continue4:
-            if [offTask, bored, distracted] == [True, True, True]:
-                if index == finalIndex:
-                    associationTimes["FBD"].append((startSecond[0], row.name[1]))
-                continue
-            else:
-                associationTimes["FBD"].append((startSecond[0], row.name[1]))
-                continue4 = False
-
-        if [onTask, satisfied, focused] == [True, True, True]:
-            startSecond = index
-            continue1 = True
+                prev = 'NSF'
+            
+            numbered_splitter(
+                start,duration,window,p,s,"on-task_satisfied_focused",vPath,"E",number
+            )
             continue
 
-        if [offTask, satisfied, focused] == [True, True, True]:
-            startSecond = index
-            continue2 = True
+        if [row["off-tsak"], row["Satisfied"], row["focused"]] == [True, True, True]:
+            if prev == 'FSF':
+                number += 1
+            else:
+                prev = 'FSF'
+            
+            numbered_splitter(
+                start,duration,window,p,s,"off-task_satisfied_focused",vPath,"E",number
+            )
+            
             continue
 
-        if [offTask, bored, idle] == [True, True, True]:
-            startSecond = index
-            continue3 = True
+        if [row["off-tsak"], row["Bored"], row["idle"]] == [True, True, True]:
+            if prev == 'FBI':
+                number += 1
+            else:
+                prev = 'FBI'
+    
+            numbered_splitter(
+                start,duration,window,p,s,"off-task_bored_idle",vPath,"E",number
+            )
+            
             continue
 
-        if [offTask, bored, distracted] == [True, True, True]:
-            startSecond = index
-            continue4 = True
+        if [row["off-tsak"], row["Bored"], row["distarcted"]] == [True, True, True]:
+            if prev == 'FBD':
+                number += 1
+            else:
+                prev = 'FBD'
+            numbered_splitter(
+                start,duration,window,p,s,"off-task_bored_distracted",vPath,"E",number
+            )
+            
             continue
-        
+        prev = ""
+        number = 1
 
-    return associationTimes
 
-
-def associaton_non_event_splitter(path, window):
-    vPath, p, s = getVideoPath(path, ALL_FILES_CSV, True)
-    data,end_time = import_data_durations(path)
-    # segments = clean_cuts(data, 1000,'bool')
-    segments = get_raw_split_annotations(data,window)
-    durations = association_durations(segments)
-    for duration in durations["NSF"]:
-        print(duration)
-        start = duration[0] - window
-        end = duration[1]
-        duration = end - start
-        non_event_splitter(
-            start, duration, window, p, s, "on-task_satisfied_focused", vPath, "E"
-        )
-
-    for duration in durations["FSF"]:
-        start = duration[0] - window
-        end = duration[1]
-        duration = end - start
-        non_event_splitter(
-            start, duration, window, p, s, "off-task_satisfied_focused", vPath, "E"
-        )
-
-    for duration in durations["FBI"]:
-        start = duration[0] - window
-        end = duration[1]
-        duration = end - start
-        non_event_splitter(
-            start, duration, window, p, s, "off-task_bored_idle", vPath, "E"
-        )
-
-    for duration in durations["FBD"]:
-        start = duration[0] - window
-        end = duration[1]
-        duration = end - start
-        non_event_splitter(
-            start, duration, window, p, s, "off-task_bored_distracted", vPath, "E"
-        )
+def numbered_splitter(start, duration, window, p, s, tag, vPath, char, number): ## **DONE**
+    name = (
+        p
+        + "_"
+        + s
+        + "_"
+        + "non-event"
+        + "_"
+        + tag
+        + "_S"
+        + str(round(start, 3))
+        + "_"
+        + char
+        + str(number)
+        + "_"
+        + str(window)
+        + "s.mp4"
+    )
+    split_and_save(MAIN_OUT_VID_PATH, vPath, str(start), str(window), name)
 
 
 if __name__ == "__main__":
@@ -521,7 +481,7 @@ if __name__ == "__main__":
     # passes = 100
     # random_paths = random.choices(paths, k=passes)
     path = MAIN_ANN_PATH + paths[0]
-    data, end_time= import_data_durations(path)
+    # data, end_time= import_data_durations(path)
     print(path)  
     # print(data)
     
@@ -541,21 +501,12 @@ if __name__ == "__main__":
     #     print(association_durations(cuts))
     # path = MAIN_ANN_PATH + paths[0]
     # data = import_data_ms(path)
-    # cuts = clean_cuts(data,1000,'bool')
     # with pd.option_context('display.max_rows', None,'display.max_columns',None):
-    #     print(cuts)
+    #     print(cuts) 
     #     print(import_data_ms(path).loc[33079:33082])
         
         
-    splits = (get_raw_split_annotations(data,3))
+    # splits = (get_raw_split_annotations(data,5))
     # print(path)
-    print(association_durations(splits))
-    # associaton_non_event_splitter(path,3)
+    association_splitter(path,3)
     
-    # this_annotation_data = pd.read_csv(MAIN_ANN_PATH + paths[1], '\t', header=None, usecols=[0, 5, 2, 3, 4]).set_index([0, 5])
-    # for i in range(splits.shape[0]):
-    #     # a = splits.xs(splits.iloc[i].name)
-    #     a = splits.iloc[i].name
-    #     print(a)
-    # print(association_durations(splits))
-    # print(this_annotation_data)
