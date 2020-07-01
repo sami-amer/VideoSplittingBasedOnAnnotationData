@@ -12,7 +12,7 @@ MAIN_OUT_VID_PATH = "ExampleOut/"
 FOLDER_CHAR = "/"
 FFMPEG_COMMAND = "ffmpeg"
 ALL_FILES_CSV = "all_filesFeb27.csv"
-CODEC = "copy"  ## if there is no nvidia GPU, replace this with the CPU Powered 'libx264'
+CODEC = "copy"  ## if there is no nvidia GPU, replace this with the CPU Powered 'libx264', or even faster, skip encoding with 'copy'
 
 
 
@@ -89,14 +89,14 @@ def import_paths_from_txt(txt):  ## **DONE**
     return out
 
 
-def clean_cuts(ms_data, window, kind):  ## NOTE: brand new, merging of two functions
+def clean_cuts(ms_data, window):  ## NOTE: brand new, merging of two functions
     """
     merge of clean_cuts_percentages and clean_cuts_status.  Output is changed between the two using the 'kind' string
 
     arguments:
         ms_data (df): data from import_data_ms
         window (int): size of the calculation window, in milliseconds
-        kind (str): '%' if you want percentages, 'bool' if you want status (True/False)
+        ~~kind (str): '%' if you want percentages, 'bool' if you want status (True/False)~~ THIS IS DEPRECATED, USE GET_RAW_SPLITS FOR BOOL
     """
     previndex = 0
     output = pd.DataFrame(
@@ -118,10 +118,7 @@ def clean_cuts(ms_data, window, kind):  ## NOTE: brand new, merging of two funct
             continue
         if i % window == 0:
             seq += 1
-            if kind == "%":
-                data = get_percentages(ms_data, window, previndex, i)
-            elif kind == "bool":
-                data = get_status(ms_data, window, previndex, i)
+            data = get_percentages(ms_data, window, previndex, i)
             previndex = i
             output.loc[seq] = data.loc[0].tolist()
     return output
@@ -228,52 +225,6 @@ def get_percentages(df, window, previndex, i): ## **DONE**
     return percentageDF
 
 
-def get_status(df, window, previndex, i): ## **DONE**
-    """
-    used in clean_cuts to get percentages per window.
-
-    arguments:
-        all arguments are inherited from clean_cuts
-    """
-    behaviorCounts = df[previndex:i]["behavior"].value_counts()
-    attentionCounts = df[previndex:i]["attention"].value_counts()
-    emotionCounts = df[previndex:i]["emotion"].value_counts()
-    statusDF = pd.DataFrame(
-        columns=[
-            "on-task",
-            "off-task",
-            "satisfied",
-            "confused",
-            "bored",
-            "focused",
-            "idle",
-            "distracted",
-        ]
-    )
-    statusDF.loc[0] = [False, False, False, False, False, False, False, False]
-    for item in behaviorCounts.iteritems():
-        # print(item[1])
-        if item[0] == 1 and item[1] > 499:
-            statusDF.loc[0]["off-task"] = True
-        elif item[0] == 2 and item[1] > 499:
-            statusDF.loc[0]["on-task"] = True
-    for item in attentionCounts.iteritems():
-        if item[0] == 1 and item[1] > 499:
-            statusDF.loc[0]["distracted"] = True
-        elif item[0] == 2 and item[1] > 499:
-            statusDF.loc[0]["idle"] = True
-        elif item[0] == 3 and item[1] > 499:
-            statusDF.loc[0]["focused"] = True
-    for item in emotionCounts.iteritems():
-        if item[0] == 1 and item[1] > 499:
-            statusDF.loc[0]["bored"] = True
-        elif item[0] == 2 and item[1] > 499:
-            statusDF.loc[0]["confused"] = True
-        elif item[0] == 3 and item[1] > 499:
-            statusDF.loc[0]["satisfied"] = True
-    return statusDF
-
-
 def getVideoPath(textPath, locations, extras=False): ## **DONE**
     file_name_splits = os.path.basename(textPath).split(".")[0].split("_")
     p = file_name_splits[0]
@@ -295,218 +246,147 @@ def getVideoPath(textPath, locations, extras=False): ## **DONE**
         # raise Exception('Video file does not exsist')
 
 
-def event_splitter(path, data, window): ## **DONE**
-    tags = [
-        "on-task",
-        "off-tsak",
-        "Bored",
-        "Confused",
-        "Satisfied",
-        "distarcted",
-        "idle",
-        "focused",
-    ]
-    vPath, p, s = getVideoPath(path, ALL_FILES_CSV, True)
-    for tag in tags:
-        try:
-            times = data.xs(tag, level=1).iterrows()
-        except:
-            continue
-        for elem in times:
-            if len(elem) > 1:
-                start = elem[1][2] - window
-                if start < 0:
-                    start = 0
-                duration = elem[1][4]
-                eventDuration = window * 2
-                if start == 0:
-                    eventDuration = window
-                if duration < window:
-                    name = (
-                        p
-                        + "_"
-                        + s
-                        + "_"
-                        + "event"
-                        + "_"
-                        + tag
-                        + "_B"
-                        + str(round(start, 3))
-                        + "_"
-                        + str(window)
-                        + "sINCOMPLETE.mp4"
-                    )  # the name has INCOMPLETE because the tag is shorter than the desired window for the event
-                    split_and_save(
-                        MAIN_OUT_VID_PATH, vPath, str(start), str(eventDuration), name
-                    )
-                else:
-                    name = (
-                        p
-                        + "_"
-                        + s
-                        + "_"
-                        + "event"
-                        + "_"
-                        + tag
-                        + "_B"
-                        + str(round(start, 3))
-                        + "_"
-                        + str(window)
-                        + "s.mp4"
-                    )
-                    split_and_save(
-                        MAIN_OUT_VID_PATH, vPath, str(start), str(eventDuration), name
-                    )
-                    
-                    non_event_splitter(start, duration, window, p, s, tag, vPath, "I")
-
-
-def non_event_splitter(start, duration, window, p, s, tag, vPath, char): ## **DONE**
-    start = start + window
-    duration = duration - window
-    iterations = (int(duration) // window) + 1
-    for i in range(iterations):
+def numbered_splitter(start, duration,window, p, s, tag, vPath, char, number, event = False): ## **DONE**
+    if event:
         name = (
             p
             + "_"
             + s
             + "_"
-            + "non-event"
+            + 'event'
+            + "_"
+            + tag
+            + "_B"
+            + str(round(start, 3))
+            + "_"
+            + str(window)
+            + "s.mp4"
+        )
+    elif not event:
+        name = (
+            p
+            + "_"
+            + s
+            + "_"
+            + "non_event"
             + "_"
             + tag
             + "_S"
             + str(round(start, 3))
             + "_"
             + char
-            + str(i + 1)
+            + str(number)
             + "_"
             + str(window)
             + "s.mp4"
         )
-        if i == (iterations - 1):
-            split_and_save(
-                MAIN_OUT_VID_PATH,
-                vPath,
-                str(start),
-                str(duration - (window * (iterations - 1))),
-                name,
-            )
-            break
-        split_and_save(MAIN_OUT_VID_PATH, vPath, str(start), str(window), name)
-        start = start + window
-
-
-def association_splitter(path, window):
-    data = import_data_durations(path)[0]
-    vPath, p, s = getVideoPath(path,ALL_FILES_CSV, True)
-    splits = get_raw_split_annotations(data,window)
-    prev = ""
-    number = 1
-    for index, row in splits.iterrows():
-        start = index[0]
-        duration = index[1] - start
-        # print(start,duration)
-        if [row["on-task"], row["Satisfied"], row["focused"]] == [True, True, True]:
-            if prev == 'NSF':
-                number += 1
-            else:
-                prev = 'NSF'
-            
-            numbered_splitter(
-                start,duration,window,p,s,"on-task_satisfied_focused",vPath,"E",number
-            )
-            continue
-
-        if [row["off-tsak"], row["Satisfied"], row["focused"]] == [True, True, True]:
-            if prev == 'FSF':
-                number += 1
-            else:
-                prev = 'FSF'
-            
-            numbered_splitter(
-                start,duration,window,p,s,"off-task_satisfied_focused",vPath,"E",number
-            )
-            
-            continue
-
-        if [row["off-tsak"], row["Bored"], row["idle"]] == [True, True, True]:
-            if prev == 'FBI':
-                number += 1
-            else:
-                prev = 'FBI'
-    
-            numbered_splitter(
-                start,duration,window,p,s,"off-task_bored_idle",vPath,"E",number
-            )
-            
-            continue
-
-        if [row["off-tsak"], row["Bored"], row["distarcted"]] == [True, True, True]:
-            if prev == 'FBD':
-                number += 1
-            else:
-                prev = 'FBD'
-            numbered_splitter(
-                start,duration,window,p,s,"off-task_bored_distracted",vPath,"E",number
-            )
-            
-            continue
-        prev = ""
-        number = 1
-
-
-def numbered_splitter(start, duration, window, p, s, tag, vPath, char, number): ## **DONE**
-    name = (
-        p
-        + "_"
-        + s
-        + "_"
-        + "non-event"
-        + "_"
-        + tag
-        + "_S"
-        + str(round(start, 3))
-        + "_"
-        + char
-        + str(number)
-        + "_"
-        + str(window)
-        + "s.mp4"
-    )
     split_and_save(MAIN_OUT_VID_PATH, vPath, str(start), str(window), name)
+ 
+def data_prep(splits):
+    output = {}
+    annotation_label = ['on-task', 'off-tsak', 'Satisfied', 'Confused', 'Bored', 'focused', 'idle', 'distarcted']
+    splits_temp = splits.fillna(False).reset_index(drop=False).set_index(annotation_label)
+    try:
+        NSF = splits_temp.xs([True, False, True, False, False, True, False, False])
+        output['NSF'] = NSF
+    except:
+        print('No NSF associations')
+    try:
+        FSF = splits_temp.xs([False, True, True, False, False, True, False, False])
+        output['FSF'] = FSF
+    except:
+        print('No FSF associations')
+    try:
+        FBI = splits_temp.xs([False, True,False,False,True,False,True,False])
+        output['FBI'] = FBI
+    except:
+        print("No FBI associations")
+    try:
+        FBD = splits_temp.xs([False, True,False,False,True,False,False,True])
+        output['FBD'] = FBD
+    except:
+        print("No FBD associations")
+    
+    behaviorSplits = splits.fillna(False).drop(columns=['Satisfied', 'Confused', 'Bored', 'focused', 'idle', 'distarcted']).reset_index(drop=False).set_index(['on-task','off-tsak'])
+    emotionSplits = splits.fillna(False).drop(columns=['focused', 'idle', 'distarcted','on-task','off-tsak']).reset_index(drop=False).set_index(['Satisfied','Confused','Bored'])
+    attentionSplits = splits.fillna(False).drop(columns=['Satisfied', 'Confused', 'Bored', 'on-task', 'off-tsak']).reset_index(drop=False).set_index(['focused','idle','distarcted'])
+    
+    try:
+        onTask = behaviorSplits.xs([True,False])
+        output['on-task'] = onTask
+    except:
+        print('THERE ARE NO ON-TASK TAGS. THIS IS UNUSUAL, but is not a cause for concern')
+    try:
+        offTask = behaviorSplits.xs([False, True])
+        output['off-task'] = offTask
+    except:
+        print('THERE ARE NO OFF-TASK TAGS. THIS IS UNUSUAL, but is not a cause for concern')
+    try:
+        satisfied = emotionSplits.xs([True, False, False])
+        output['satisfied'] = satisfied
+    except:
+        print("THERE ARE NO SATISFIED TAGS. THIS IS UNUSUAL, but is not a cause for concern")
+    try:
+        confused = emotionSplits.xs([False, True, False])
+        output['confused'] = confused
+    except:
+        print("THERE ARE NO CONFUSED TAGS. THIS IS UNUSUAL, but is not a cause for concern.")
+    try:
+        bored = emotionSplits.xs([False, False, True])
+        output['bored'] = bored
+    except:
+        print("THERE ARE NO BORED TAGS. THIS IS UNUSUAL, but is not a cause for concern")
+    try:
+        focused = attentionSplits.xs([True, False, False])
+        output['focused'] = focused
+    except:
+        print("THERE ARE NO FOCUSED TAGS. THIS IS UNUSUAL, but is not a cause for concern")
+    try:
+        idle = attentionSplits.xs([False,True,False])
+        output['idle'] = idle
+    except:
+        print("THERE ARE NO IDLE TAGS. THIS IS UNUSUAL, but is not a cause for concern")
+    try:
+        distracted = attentionSplits.xs([False,False,True])
+        output['distracted'] = distracted
+    except:
+        print("THERE ARE NO DISTRACTED TAGS. THIS IS UNUSUAL, but is not a cause for concern")\
 
+    return output
+
+def splitting_categories(category_name, category_array,window,p,s, vPath, char):
+    number = 0
+    for index, row in category_array.iterrows():
+        # print(row[0],row[1])
+        start = row[0]
+        duration = row[1] - start
+        number += 1
+        numbered_splitter(start,duration,window,p,s, category_name,vPath,char,number)
 
 if __name__ == "__main__":
     paths = import_paths_from_txt("paths.txt")
     # passes = 100
     # random_paths = random.choices(paths, k=passes)
     path = MAIN_ANN_PATH + paths[0]
-    # data, end_time= import_data_durations(path)
-    print(path)  
-    # print(data)
+    data = import_data_durations(path)[0]
+    splits = get_raw_split_annotations(data,3)
+    vPath, p, s = getVideoPath(path,ALL_FILES_CSV,True)
+    annotation_label = ['on-task', 'off-tsak', 'Satisfied', 'Confused', 'Bored', 'focused', 'idle', 'distarcted']
+    splits_temp = splits.reset_index(drop=False).set_index(annotation_label)
+    # NSF = splits_temp.xs([True, False, True, False, False, True, False, False])
     
-    # onTask = data.xs('on-task',level = 1)
-    # for elem in data.xs('on-task',level = 1).iterrows():
-    #     print(len(elem)) # [1][2] is start, [1][4] is duration
-    # cuts = (clean_cuts(data,3000,'bool'))
-    # print(cuts)
-    # for i,row in cuts.iterrows():
-    #     print(row['on-task'])
-    # print(data)
-    # path= paths[1]
-    # event_splitter(MAIN_ANN_PATH + path,data,3)
-    # for path in random_paths:
-    #     data = import_data_ms(MAIN_ANN_PATH + path)
-    #     cuts = clean_cuts(data,1000,'bool')
-    #     print(association_durations(cuts))
-    # path = MAIN_ANN_PATH + paths[0]
-    # data = import_data_ms(path)
-    # with pd.option_context('display.max_rows', None,'display.max_columns',None):
-    #     print(cuts) 
-    #     print(import_data_ms(path).loc[33079:33082])
-        
-        
-    # splits = (get_raw_split_annotations(data,5))
-    # print(path)
-    association_splitter(path,3)
+    # onTask = splits.drop(columns=['Satisfied', 'Confused', 'Bored', 'focused', 'idle', 'distarcted'])
+    # splits_temp = splits.reset_index(drop=False).set_index(annotation_label)
+    # onTask = onTask.reset_index(drop=False).set_index(['on-task','off-tsak'])
+    # onTask = onTask.xs([True,False])
+    # print(splits.fillna(False))
+    dic = data_prep(splits)
+    print(dic['on-task'])
+    #same to other categories 
+    # FSF = splits_temp.xs(labels)
+    #this way you don't need the 'prev' var and the loop will be faster (no need to check each row)
+    #this could be a function so you don't repeat the code every time and in case you need to edit, you will not need to edit each one and 
+    # spliting_categories("on-task", onTask, 3, p, s, vPath)
+    # print(onTask)
+
     
